@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Adivina el diente temporal</title>
+<style>
+:root{--bg:#fff;--fg:#000;--mut:#595959;--line:#cfcfcf;--hi:#000;--on:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--mut:#a6a6a6;--line:#3a3a3a;--hi:#fff;--on:#000;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--mut:#a6a6a6;--line:#3a3a3a;--hi:#fff;--on:#000;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Georgia,"Times New Roman",serif;line-height:1.5}
+main{max-width:620px;margin:0 auto;padding:28px 20px 48px}
+h1{font-family:Arial,Helvetica,sans-serif;font-size:clamp(1.9rem,6vw,2.6rem);line-height:1.1;margin:0 0 14px;letter-spacing:-.02em}
+p{margin:0 0 14px}.mut{color:var(--mut)}
+.sans,button{font-family:Arial,Helvetica,sans-serif}
+button{font-size:1rem;color:var(--fg);background:var(--bg);border:1.5px solid var(--fg);border-radius:0;padding:13px 16px;cursor:pointer;text-align:left}
+button:hover:not(:disabled){background:var(--fg);color:var(--bg)}
+button:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+button:disabled{cursor:default}
+.primary{background:var(--fg);color:var(--bg);text-align:center;padding:14px 26px}
+.primary:hover:not(:disabled){background:var(--bg);color:var(--fg)}
+.link{border:0;padding:6px 0;text-decoration:underline;text-underline-offset:4px;background:none}
+.link:hover:not(:disabled){background:none;color:var(--mut)}
+.link:disabled{color:var(--mut);text-decoration:none}
+.top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid var(--fg);padding-bottom:8px;margin-bottom:18px;font-family:Arial,Helvetica,sans-serif;font-size:.95rem}
+.top b{font-weight:700}
+.imgs{display:flex;justify-content:center;gap:12px;background:#fff;border:1px solid var(--line);padding:14px;margin-bottom:18px}
+.imgs img{display:block;height:200px;max-width:48%;object-fit:contain}
+.q{font-family:Arial,Helvetica,sans-serif;font-weight:700;font-size:1.15rem;margin:0 0 12px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt.right{background:var(--fg);color:var(--bg)}
+.opt.wrong{border-style:dashed;border-width:2px;text-decoration:line-through}
+.box{border-left:3px solid var(--fg);padding:2px 0 2px 14px;margin:16px 0}
+.row{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-top:16px}
+.bar{height:3px;background:var(--line);margin:-12px 0 18px}.bar i{display:block;height:100%;background:var(--fg)}
+ul{padding-left:20px;margin:0 0 18px}li{margin-bottom:8px}
+.big{font-family:Arial,Helvetica,sans-serif;font-size:3.2rem;font-weight:700;line-height:1;margin:6px 0 14px}
+[hidden]{display:none!important}
+@media (max-width:480px){.opts{grid-template-columns:1fr}.imgs img{height:160px}}
+@media (prefers-reduced-motion:no-preference){.box{animation:in .25s ease-out}@keyframes in{from{opacity:0}to{opacity:1}}}
+</style>
+</head>
+<body>
+<main>
+<section id="start">
+  <h1>Adivina el diente temporal</h1>
+  <p>Verás la ilustración de una pieza de la dentición temporal y tendrás que decir cuál es. Cada ronda tiene las nueve piezas, en orden aleatorio.</p>
+  <ul>
+    <li>Acertar sin pista vale 10 puntos.</li>
+    <li>Acertar después de ver la pista vale 5 puntos.</li>
+    <li>Fallar no resta, pero te enseña cómo reconocer la pieza.</li>
+  </ul>
+  <p class="mut" id="bestline" hidden></p>
+  <button class="primary" id="go">Empezar</button>
+</section>
+
+<section id="game" hidden>
+  <div class="top"><span id="prog"></span><b id="score"></b></div>
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="imgs" id="imgs"></div>
+  <p class="q">¿Qué pieza es?</p>
+  <div class="opts" id="opts"></div>
+  <div class="row"><button class="link" id="hintbtn">Ver pista (vale la mitad)</button></div>
+  <div class="box" id="hintbox" hidden></div>
+  <div class="box" id="fb" hidden></div>
+  <div class="row"><span></span><button class="primary" id="next" hidden>Siguiente</button></div>
+</section>
+
+<section id="end" hidden>
+  <h1>Ronda terminada</h1>
+  <div class="big" id="final"></div>
+  <p id="msg"></p>
+  <p class="mut" id="bestend"></p>
+  <div id="review" hidden>
+    <p class="q">Para repasar</p>
+    <ul id="fails"></ul>
+  </div>
+  <button class="primary" id="again">Jugar otra ronda</button>
+</section>
+</main>
+<script>
+// Array con las rutas a tus imágenes locales
+const IM = [
+  "", // 0 (No se usa)
+  "Imagenes/segundo molar inf.png",       // 1 - 2º Molar Inferior
+  "Imagenes/inci lat sup.png",            // 2 - Incisivo Lateral Superior
+  "Imagenes/segundo molar sup.png",       // 3 - 2º Molar Superior
+  "Imagenes/segundo molar sup (2).png",   // 4 - 2º Molar Superior (2)
+  "Imagenes/canino inf.png",              // 5 - Canino Inferior
+  "Imagenes/segundo molar inf (2).png",   // 6 - 2º Molar Inferior (2)
+  "Imagenes/primer molar sup.png",        // 7 - 1er Molar Superior
+  "Imagenes/inci centrla inf.png",        // 8 - Incisivo Central Inferior
+  "Imagenes/primer molar inf.png",        // 9 - 1er Molar Inferior
+  "Imagenes/incisivo central sup.png",    // 10 - Incisivo Central Superior
+  "Imagenes/inci central sup vesti.png",  // 11 - Incisivo Central Superior (Vesti)
+  "Imagenes/caninio sup.png"              // 12 - Canino Superior
+];
+
+const T=[
+{n:"Incisivo central superior",i:[10,11],t:"Es el incisivo temporal más grande."},
+{n:"Incisivo lateral superior",i:[2],t:"Presenta el borde distal más redondeado que el mesial."},
+{n:"Canino superior",i:[12],t:"La vertiente cuspídea mesial es más larga que la distal."},
+{n:"Primer molar superior",i:[7],t:"Presenta una morfología característica y una prominencia cervical marcada."},
+{n:"Segundo molar superior",i:[3,4],t:"Presenta cuatro cúspides principales y puede presentar tubérculo de Carabelli."},
+{n:"Incisivo central inferior",i:[8],t:"Es el diente más pequeño y presenta una corona estrecha y simétrica."},
+{n:"Canino inferior",i:[5],t:"La vertiente cuspídea distal es más larga que la mesial."},
+{n:"Primer molar inferior",i:[9],t:"Presenta una prominencia cervical muy marcada, como los primeros molares temporales."},
+{n:"Segundo molar inferior",i:[1,6],t:"Presenta tres cúspides vestibulares y dos linguales."}
+];
+
+const $=s=>document.querySelector(s);
+const shuffle=a=>{a=a.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a};
+
+let best=0;
+try{best=+localStorage.getItem("dt-best")||0}catch(e){}
+let order,idx,score,hint,done,fails;
+const MAX=T.length*10;
+
+function show(id){
+  ["start","game","end"].forEach(s=>$("#"+s).hidden=s!==id);
+  window.scrollTo(0,0);
+}
+
+function bestText(){
+  return best?`Tu mejor puntuación: ${best} de ${MAX}.`:""
+}
+
+function init(){
+  const b=$("#bestline");
+  b.textContent=bestText();
+  b.hidden=!best;
+}
+
+function start(){
+  order=shuffle(T);
+  idx=0;
+  score=0;
+  fails=[];
+  show("game");
+  ask();
+}
+
+function ask(){
+  const t=order[idx];
+  hint=false;
+  done=false;
+  $("#prog").textContent=`Pregunta ${idx+1} de ${T.length}`;
+  $("#score").textContent=`${score} puntos`;
+  $("#barfill").style.width=`${idx/T.length*100}%`;
+  
+  // Renderizar las imágenes reales
+  $("#imgs").innerHTML=t.i.map(k=>`<img src="${IM[k]}" alt="Ilustración de una pieza dental temporal">`).join("");
+  
+  const opts=shuffle([t,...shuffle(T.filter(x=>x!==t)).slice(0,3)]);
+  const box=$("#opts");
+  box.innerHTML="";
+  
+  opts.forEach(o=>{
+    const b=document.createElement("button");
+    b.className="opt";
+    b.textContent=o.n;
+    b.onclick=()=>pick(b,o,t);
+    box.appendChild(b);
+  });
+  
+  $("#hintbox").hidden=true;
+  $("#fb").hidden=true;
+  $("#next").hidden=true;
+  $("#hintbtn").disabled=false;
+  $("#hintbtn").hidden=false;
+}
+
+function showHint(){
+  if(done||hint)return;
+  hint=true;
+  const h=$("#hintbox");
+  h.textContent="Pista: "+order[idx].t;
+  h.hidden=false;
+  $("#hintbtn").disabled=true;
+}
+
+function pick(b,o,t){
+  if(done)return;
+  done=true;
+  const ok=o===t;
+  const pts=ok?(hint?5:10):0;
+  score+=pts;
+  
+  if(!ok) fails.push(t);
+  
+  document.querySelectorAll(".opt").forEach(x=>{
+    x.disabled=true;
+    if(x.textContent===t.n) x.classList.add("right");
+  });
+  
+  if(!ok) b.classList.add("wrong");
+  
+  $("#score").textContent=`${score} puntos`;
+  $("#hintbtn").hidden=true;
+  
+  const f=$("#fb");
+  f.innerHTML="";
+  const p1=document.createElement("p");
+  p1.className="sans";
+  p1.style.fontWeight="700";
+  p1.style.marginBottom="6px";
+  p1.textContent=ok?`Correcto. Sumas ${pts} puntos${hint?" (con pista)":""}.`:`Incorrecto. La respuesta era ${t.n.toLowerCase()}.`;
+  
+  const p2=document.createElement("p");
+  p2.style.margin="0";
+  p2.textContent="Cómo reconocerlo: "+t.t.charAt(0).toLowerCase()+t.t.slice(1);
+  
+  f.append(p1,p2);
+  f.hidden=false;
+  
+  const n=$("#next");
+  n.textContent=idx<T.length-1?"Siguiente":"Ver resultado";
+  n.hidden=false;
+  n.focus();
+}
+
+function finish(){
+  show("end");
+  $("#final").textContent=`${score} / ${MAX}`;
+  const r=score/MAX;
+  
+  $("#msg").textContent=r===1?"Ronda perfecta: reconoces las nueve piezas."
+                       :r>=.75?"Muy buen resultado. Te faltan pocos detalles."
+                       :r>=.5?"Vas por buen camino. Repasa las piezas de abajo y vuelve a intentarlo."
+                       :"Todavía cuesta. Repasa las características y prueba otra ronda.";
+                       
+  if(score>best){
+    best=score;
+    try{localStorage.setItem("dt-best",String(best))}catch(e){}
+  }
+  
+  $("#bestend").textContent=bestText();
+  
+  const ul=$("#fails");
+  ul.innerHTML="";
+  fails.forEach(t=>{
+    const li=document.createElement("li");
+    const b=document.createElement("b");
+    b.className="sans";
+    b.textContent=t.n+". ";
+    li.append(b,document.createTextNode(t.t));
+    ul.appendChild(li);
+  });
+  
+  $("#review").hidden=!fails.length;
+  $("#barfill").style.width="100%";
+}
+
+$("#go").onclick=start;
+$("#again").onclick=start;
+$("#hintbtn").onclick=showHint;
+$("#next").onclick=()=>{
+  idx++;
+  idx<T.length?ask():finish();
+};
+
+init();
+</script>
+</body>
+</html>
